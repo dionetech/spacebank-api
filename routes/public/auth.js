@@ -90,7 +90,7 @@ router.post("/otp", async(req, res, next) => {
         const { email, otp } = req.body;
         console.log("BODY: ", req.body);
 
-        const checkOTPCode = await OTP.findOne({ otp: parseInt(otp) });
+        const checkOTPCode = await OTP.findOne({ otp: String(otp) });
         if (!checkOTPCode) return failedResponse(res, 400, 'Invalid verification code');
 
         const user = await User.findOne({ email: email });
