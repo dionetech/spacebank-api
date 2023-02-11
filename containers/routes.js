@@ -10,8 +10,8 @@ const Index = require('../routes');
 const error = require('../middleware/error');
 var whitelist = [
     'http://localhost:5173',
-    'https://hurlepay.vercel.app',
-    'https://hurlepay.com'
+    'https://spacebank-app.vercel.app',
+    'https://spacebank.com'
 ];
 
 var corsOptions = {
