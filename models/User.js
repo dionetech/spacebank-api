@@ -57,10 +57,10 @@ const userSchema = new mongoose.Schema({
     },
     dob: {
         type: Date,
-        default: new Date().toISOString(),
     },
     doj: {
         type: Date,
+        default: new Date().toISOString(),
     },
     refid: {
         type: String,

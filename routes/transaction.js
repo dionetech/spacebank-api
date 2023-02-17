@@ -4,7 +4,15 @@ const Auth = require("../middleware/auth");
 const { Balance } = require("../models/Balance");
 const { User } = require("../models/User");
 const axios = require("axios");
+const { Transaction } = require("../models/Transaction");
 const router = require("express").Router();
+
+router.get("/:id", [Auth], async (req, res) => {
+    const { id } = req.params;
+    const user = await User.findById(id);
+    if (!user) return failedResponse(res, 400, 'User not found');
+    console.log("USER: ", user);
+})
 
 router.post("/send-money/p2p", [Auth], async(req, res) => {
     const { username, amount, description, pin } = req.body;
@@ -31,10 +39,9 @@ router.post("/send-money/p2p", [Auth], async(req, res) => {
     return successResponse(res, 200, {}, `You sent ${amount} to ${username}`);
 });
 
-router.post("/buy-airtime", [Auth], async (req, res) => {
-    const {phone, network, amount} = req.body;
-
-    console.log("BODY: ", req.body);
+router.post("/airtime/buy-airtime", [Auth], async (req, res) => {
+    const {phone, network, amount, networkIcon} = req.body;
+    const user = await User.findById(req.user._id);
 
     var data = JSON.stringify({
         "phone": String(phone),
@@ -53,14 +60,24 @@ router.post("/buy-airtime", [Auth], async (req, res) => {
     };
       
     axios(config)
-        .then(function (response) {
+        .then(async function (response) {
+            const transaction = new Transaction({
+                user: user,
+                amount: parseInt(amount),
+                description: `You recharged ₦${amount} to ${phone}`,
+                type: "buy-airtime",
+                status: "confirmed",
+                icon: networkIcon,
+            })
+            await transaction.save();
             if (response.data.error){
+                console.log("ERROR 2: ", response.data);
                 return failedResponse(res, 400, response.data.message);
             }
             return successResponse(res, 200, response.data, `You recharged ₦${amount} to ${phone}`);
         })
         .catch(function (error) {
-            console.log("ERROR: ", error);
+            console.log("ERROR 1: ", error.response);
             return failedResponse(res, 400, 'Insufficient balance');
         });
 })

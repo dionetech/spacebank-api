@@ -5,8 +5,8 @@ const successResponse = require('../helpers/successResponse');
 const Auth = require("../middleware/auth");
 const { Balance } = require("../models/Balance");
 const { Deposit } = require("../models/Deposit");
+const { Transaction } = require('../models/Transaction');
 const { User } = require("../models/User");
-const Verification = require("../models/Verification");
 const { Withdrawal } = require("../models/Withdrawal");
 
 
@@ -17,7 +17,7 @@ router.get('/:id', [Auth], async (req, res) => {
     const user = await User.findById(id);
     if (!user) return failedResponse(res, 400, 'User data error');
 
-    const verification = await Verification.findOne({ user: id });
+    const transactions = await Transaction.find({ user: id }).sort({ createdAt: -1 });
     const balances = await Balance.findOne({ user: id });
     const deposits = await Deposit.find({ user: id });
     const withdrawals = await Withdrawal.find({ user: id });
@@ -27,7 +27,7 @@ router.get('/:id', [Auth], async (req, res) => {
         200,
         {
             user,
-            verification,
+            transactions,
             balances,
             deposits,
             withdrawals,
