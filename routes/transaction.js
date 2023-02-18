@@ -42,6 +42,9 @@ router.post("/send-money/p2p", [Auth], async(req, res) => {
 router.post("/airtime/buy-airtime", [Auth], async (req, res) => {
     const {phone, network, amount, networkIcon} = req.body;
     const user = await User.findById(req.user._id);
+    const userBalance = await Balance.findOne({ user: user });
+    
+    if (amount>parseInt(userBalance.balance)-1) return failedResponse(res, 400, 'Insuficient balance');
 
     var data = JSON.stringify({
         "phone": String(phone),
@@ -69,7 +72,9 @@ router.post("/airtime/buy-airtime", [Auth], async (req, res) => {
                 status: "confirmed",
                 icon: networkIcon,
             })
+            userBalance.balance = parseInt(userBalance.balance)-parseInt(amount);
             await transaction.save();
+            userBalance.save();
             if (response.data.error){
                 console.log("ERROR 2: ", response.data);
                 return failedResponse(res, 400, response.data.message);
