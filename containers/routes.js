@@ -10,6 +10,7 @@ const Index = require('../routes');
 const error = require('../middleware/error');
 var whitelist = [
     'http://localhost:5173',
+    'http://localhost:5174',
     'https://spacebank-app.vercel.app',
     'https://spacebank.com'
 ];

@@ -87,4 +87,51 @@ router.post("/airtime/buy-airtime", [Auth], async (req, res) => {
         });
 })
 
+router.post("/data/buy-data", [Auth], async (req, res)  => {{
+    const {plan, network, phone, amount, networkIcon} = req.body;
+    const user = await User.findById(req.user._id);
+    const userBalance = await Balance.findOne({ user: user });
+
+    console.log("BODY: ", req.body);
+
+    var data = JSON.stringify({
+        "phone": String(phone),
+        "plan": plan,
+        "network": parseInt(network),
+    });
+      
+    var config = {
+        method: 'POST',
+        url: 'https://bingpay.ng/api/v1/buy-data',
+        headers: { 
+            'Content-Type': 'application/json', 
+            'Authorization': 'Bearer 1dd501141dffd9d68f254b241f05871b8f10754c90f4832ad9'
+        },
+        data : data
+    };
+      
+    axios(config)
+        .then(async function (response) {
+            const transaction = new Transaction({
+                user: user,
+                amount: parseInt(amount),
+                description: `You subscribed ₦${amount} to ${phone}`,
+                type: "buy-data",
+                status: "confirmed",
+                icon: networkIcon,
+            })
+            userBalance.balance = parseInt(userBalance.balance)-parseInt(amount);
+            await transaction.save();
+            userBalance.save();
+            if (response.data.error){
+                console.log("ERROR 2: ", response.data);
+                return failedResponse(res, 400, response.data.message);
+            }
+            return successResponse(res, 200, response.data, `You recharged ₦${amount} to ${phone}`);
+        })
+        .catch(function (error) {
+            console.log(error);
+        });
+}})
+
 module.exports = router;
