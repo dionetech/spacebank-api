@@ -18,7 +18,7 @@ var whitelist = [
 
 var corsOptions = {
     exposedHeaders: 'x-auth-token',
-    origin: whitelist,
+    origin: "*",
 };
 
 module.exports = function (app){

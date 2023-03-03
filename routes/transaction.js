@@ -177,13 +177,81 @@ router.post("/bill/pay-bill", [Auth], async (req, res) => {
             return successResponse(res, 200, response.data, `You recharged ₦${amount} to ${phone}`);
         })
         .catch(function (error) {
-            console.log(error);
+            console.log("ERROR: ", error);
             return failedResponse(res, 400, "An error occured");
         });
 })
 
-router.get("/giftcard/all", [Auth], async (req, res) => {
+router.post("/giftcard/purchase", [Auth], async (req, res) => {
+    console.log("BODY: ", req.body);
+    const { product_id, amount, pin, networkIcon, name } = req.body;
+    const user = await User.findById(req.user._id);
+    const userBalance = await Balance.findOne({ user: user });
+
+    if (parseInt(amount)>parseInt(userBalance.balance)-1) return failedResponse(res, 400, 'Insuficient balance');
+
+    var data = JSON.stringify({
+        "product_id": product_id
+    });
     
+    var config = {
+        method: 'post',
+        maxBodyLength: Infinity,
+        url: 'https://bingpay.ng/api/v1/validate-local-giftcard',
+        headers: { 
+            'Content-Type': 'application/json', 
+            'Authorization': 'Bearer 1dd501141dffd9d68f254b241f05871b8f10754c90f4832ad9'
+        },
+        data : data
+    };
+    
+    axios(config)
+        .then(function (response) {
+            // console.log("RESP: ", response.data);
+            if (response.data.error===false){
+                data = JSON.stringify({
+                    "product_id": product_id,
+                    "amount": parseInt(amount)
+                });
+
+                config = {
+                    method: 'post',
+                    maxBodyLength: Infinity,
+                    url: 'https://bingpay.ng/api/v1/purchase-local-giftcard',
+                    headers: { 
+                        'Content-Type': 'application/json', 
+                        'Authorization': 'Bearer 1dd501141dffd9d68f254b241f05871b8f10754c90f4832ad9'
+                    },
+                    data : data
+                };
+
+                axios(config)
+                    .then(async function (response) {
+                        // console.log("RESP2 : ", response.data);
+                        if (response.data.error===false){
+                            // Move success function here...
+                        }
+                        const transaction = new Transaction({
+                            user: user,
+                            amount: parseInt(amount),
+                            description: `You purchased a ${name} gift card of ₦${amount}`,
+                            type: "purchased-giftcard",
+                            status: "confirmed",
+                            icon: networkIcon,
+                        })
+                        await transaction.save();
+                        return successResponse(res, 200, response.data, `You purchased a ${name} gift card of ₦${amount}`);
+                    })
+                    .catch(function (error) {
+                        console.log("ERROR 2: ", error);
+                        return failedResponse(res, 400, "An error occured");
+                    });
+            }
+        })
+        .catch(function (error) {
+            console.log("ERROR: ", error);
+            return failedResponse(res, 400, "An error occured");
+        });
 })
 
 module.exports = router;
