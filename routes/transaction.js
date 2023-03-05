@@ -234,13 +234,13 @@ router.post("/giftcard/purchase", [Auth], async (req, res) => {
                         const transaction = new Transaction({
                             user: user,
                             amount: parseInt(amount),
-                            description: `You purchased a ${name} gift card of ₦${amount}`,
+                            description: `You purchased a ${name} gift card`,
                             type: "purchased-giftcard",
                             status: "confirmed",
                             icon: networkIcon,
                         })
                         await transaction.save();
-                        return successResponse(res, 200, response.data, `You purchased a ${name} gift card of ₦${amount}`);
+                        return successResponse(res, 200, response.data, `You purchased a ${name} gift card`);
                     })
                     .catch(function (error) {
                         console.log("ERROR 2: ", error);
