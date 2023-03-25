@@ -65,10 +65,11 @@ router.post("/airtime/buy-airtime", [Auth], async (req, res) => {
             const transaction = new Transaction({
                 user: user,
                 amount: parseInt(amount),
-                description: `You recharged ₦${amount} to ${phone}`,
+                description: `Recharged to ${phone}`,
                 type: "buy-airtime",
                 status: "confirmed",
                 icon: networkIcon,
+                createdAt: new Date().toISOString()
             })
             userBalance.balance = parseInt(userBalance.balance)-parseInt(amount);
             await transaction.save();
@@ -113,10 +114,11 @@ router.post("/data/buy-data", [Auth], async (req, res)  => {{
             const transaction = new Transaction({
                 user: user,
                 amount: parseInt(amount),
-                description: `You subscribed ₦${amount} to ${phone}`,
+                description: `Subscribed to ${phone}`,
                 type: "buy-data",
                 status: "confirmed",
                 icon: networkIcon,
+                createdAt: new Date().toISOString()
             })
             userBalance.balance = parseInt(userBalance.balance)-parseInt(amount);
             await transaction.save();
@@ -125,7 +127,7 @@ router.post("/data/buy-data", [Auth], async (req, res)  => {{
                 console.log("ERROR 2: ", response.data);
                 return failedResponse(res, 400, response.data.message);
             }
-            return successResponse(res, 200, response.data, `You recharged ₦${amount} to ${phone}`);
+            return successResponse(res, 200, response.data, `You subscribed ₦${amount} to ${phone}`);
         })
         .catch(function (error) {
             console.log(error);
@@ -162,10 +164,11 @@ router.post("/bill/pay-bill", [Auth], async (req, res) => {
             const transaction = new Transaction({
                 user: user,
                 amount: parseInt(amount),
-                description: `You paid a bill of ${amount}`,
+                description: `Paid a bill`,
                 type: "pay-bill",
                 status: "confirmed",
                 icon: networkIcon,
+                createdAt: new Date().toISOString()
             })
             userBalance.balance = parseInt(userBalance.balance)-parseInt(amount);
             await transaction.save();
@@ -174,13 +177,30 @@ router.post("/bill/pay-bill", [Auth], async (req, res) => {
                 console.log("ERROR 2: ", response.data);
                 return failedResponse(res, 400, response.data.message);
             }
-            return successResponse(res, 200, response.data, `You recharged ₦${amount} to ${phone}`);
+            return successResponse(res, 200, response.data, `Paid a bill of ₦${amount}`);
         })
         .catch(function (error) {
             console.log("ERROR: ", error);
             return failedResponse(res, 400, "An error occured");
         });
 })
+
+router.post("/crypto/send", [Auth], async (req, res) => {
+    const  { fromAddress, toAddress, amount, privateKey, networkIcon } = req.body;
+    const user = await User.findById(req.user._id);
+
+    const transaction = new Transaction({
+        user: user,
+        amount: parseFloat(amount),
+        description: `You sent ${networkIcon} to ${String(toAddress).slice(0, 20)}...`,
+        type: `sent-${networkIcon}`,
+        status: "confirmed",
+        icon: networkIcon,
+        createdAt: new Date().toISOString()
+    })
+    await transaction.save();
+    return successResponse(res, 200, { transaction }, `You sent ${networkIcon} to ${String(toAddress).slice(0, 10)}...`);
+});
 
 router.post("/giftcard/purchase", [Auth], async (req, res) => {
     console.log("BODY: ", req.body);
@@ -234,13 +254,14 @@ router.post("/giftcard/purchase", [Auth], async (req, res) => {
                         const transaction = new Transaction({
                             user: user,
                             amount: parseInt(amount),
-                            description: `You purchased a ${name} gift card`,
+                            description: `Purchased a ${name} gift card`,
                             type: "purchased-giftcard",
                             status: "confirmed",
                             icon: networkIcon,
+                            createdAt: new Date().toISOString()
                         })
                         await transaction.save();
-                        return successResponse(res, 200, response.data, `You purchased a ${name} gift card`);
+                        return successResponse(res, 200, response.data, `Purchased a ${name} gift card`);
                     })
                     .catch(function (error) {
                         console.log("ERROR 2: ", error);
