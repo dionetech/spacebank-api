@@ -69,7 +69,8 @@ router.post("/airtime/buy-airtime", [Auth], async (req, res) => {
                 type: "buy-airtime",
                 status: "confirmed",
                 icon: networkIcon,
-                createdAt: new Date().toISOString()
+                createdAt: new Date().toISOString(),
+                mode: "outgoing"
             })
             userBalance.balance = parseInt(userBalance.balance)-parseInt(amount);
             await transaction.save();
@@ -118,7 +119,8 @@ router.post("/data/buy-data", [Auth], async (req, res)  => {{
                 type: "buy-data",
                 status: "confirmed",
                 icon: networkIcon,
-                createdAt: new Date().toISOString()
+                createdAt: new Date().toISOString(),
+                mode: "outgoing"
             })
             userBalance.balance = parseInt(userBalance.balance)-parseInt(amount);
             await transaction.save();
@@ -168,6 +170,7 @@ router.post("/bill/pay-bill", [Auth], async (req, res) => {
                 type: "pay-bill",
                 status: "confirmed",
                 icon: networkIcon,
+                mode: "outgoing",
                 createdAt: new Date().toISOString()
             })
             userBalance.balance = parseInt(userBalance.balance)-parseInt(amount);
@@ -196,6 +199,7 @@ router.post("/crypto/send", [Auth], async (req, res) => {
         type: `sent-${networkIcon}`,
         status: "confirmed",
         icon: networkIcon,
+        mode: "outgoing",
         createdAt: new Date().toISOString()
     })
     await transaction.save();
@@ -258,7 +262,8 @@ router.post("/giftcard/purchase", [Auth], async (req, res) => {
                             type: "purchased-giftcard",
                             status: "confirmed",
                             icon: networkIcon,
-                            createdAt: new Date().toISOString()
+                            createdAt: new Date().toISOString(),
+                            mode: "outgoing"
                         })
                         await transaction.save();
                         return successResponse(res, 200, response.data, `Purchased a ${name} gift card`);

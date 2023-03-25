@@ -26,6 +26,10 @@ const transactionSchema = new mongoose.Schema(
             type: String,
             default: 'Pending',
         },
+        mode: {
+            type: String,
+            required: true,
+        },
         createdAt: {
             type: Date,
             required: true,

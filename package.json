@@ -9,13 +9,16 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
-  "author": "",
+  "author": "David Chika",
   "license": "ISC",
   "dependencies": {
+    "@sentry/node": "^7.45.0",
+    "@sentry/tracing": "^7.45.0",
     "axios": "^1.3.2",
     "bcrypt": "^5.1.0",
     "bcryptjs": "^2.4.3",
     "body-parser": "^1.20.1",
+    "cluster": "^0.7.7",
     "config": "^3.3.9",
     "cors": "^2.8.5",
     "dotenv": "^16.0.3",
