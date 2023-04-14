@@ -18,7 +18,9 @@
     "bcrypt": "^5.1.0",
     "bcryptjs": "^2.4.3",
     "body-parser": "^1.20.1",
+    "chai": "^4.3.7",
     "cluster": "^0.7.7",
+    "compression": "^1.7.4",
     "config": "^3.3.9",
     "cors": "^2.8.5",
     "dotenv": "^16.0.3",
@@ -31,14 +33,20 @@
     "joi-password-complexity": "^5.1.0",
     "jsonwebtoken": "^9.0.0",
     "lodash": "^4.17.21",
+    "mocha": "^10.2.0",
+    "moment": "^2.29.4",
     "mongoose": "^6.9.1",
     "morgan": "^1.10.0",
+    "node-cache": "^5.1.2",
+    "node-statsd": "^0.1.1",
     "nodemailer": "^6.9.1",
     "randomid": "^1.1.0",
+    "redis": "^4.6.5",
+    "response-time": "^2.3.2",
     "winston": "^3.8.2",
     "winston-mongodb": "^5.1.1"
   },
   "devDependencies": {
-    "nodemon": "^2.0.20"
+    "nodemon": "^2.0.22"
   }
 }

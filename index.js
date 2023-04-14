@@ -20,16 +20,14 @@ Sentry.init({
 app.use(Sentry.Handlers.requestHandler());
 app.use(Sentry.Handlers.tracingHandler());
 
-require('./containers/logger')();
-require('./containers/database')();
-require('./containers/routes')(app);
-
-app.get('/', (req, res) => {
-	res.send({title: "Testing the server with a main route..."})
-})
+require('./src/containers/logger')();
+require('./src/containers/database')();
+require('./src/containers/routes')(app);
 
 const PORT = process.env.PORT;
 
 app.listen(PORT, () => {
 	console.log("Server is running on port: ", PORT);
 })
+
+module.exports = app;

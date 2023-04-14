@@ -2,17 +2,18 @@ const express = require('express');
 const bcrypt = require('bcrypt');
 const failedResponse = require('../../helpers/failedResponse');
 const successResponse = require('../../helpers/successResponse');
-const { Balance } = require('../../models/Balance');
 const OTP = require('../../models/OTP');
 const { User } = require('../../models/User');
 const Verification = require('../../models/Verification');
 const UserSession = require('../../models/UserSession');
+const Security = require('../../models/Security');
+const { EmailVerificationOTP } = require('../../helpers/mailer');
 const router = express.Router();
 
 // Login Route
 router.post("/", async(req, res, next) => {
     try{
-        const { email, password } = req.body;
+        const { email, password, device, deviceInfo, productSub } = req.body;
         let user;
         user = await User.findOne({ email: email });
         if (!user) return failedResponse(res, 400, 'User with these details does not exist');
@@ -24,11 +25,21 @@ router.post("/", async(req, res, next) => {
         if (!user.verifiedEmail)
             return failedResponse(res, 400, 'Email not verified');
 
+        let session = await UserSession.findOne({ deviceID: productSub });
+        if (session){
+            console.log("Can't add this session");
+        }else{
+            session = new UserSession({
+                user: user._id,
+                deviceID: productSub,
+                deviceType: device,
+                deviceInfo: deviceInfo,
+                createdAt: new Date().toISOString()
+            });
+            await session.save();
+        }
+
         const token = user.generateAuthToken();
-        const session = new UserSession({
-            user: user._id,
-        });
-        await session.save();
         user.passwordText = undefined;
         user.password=undefined;
 
@@ -67,16 +78,17 @@ router.post("/signup", async(req, res, next) => {
         });
         user = await user.save();
 
-        await new Balance({ user: user._id }).save();
         await new Verification({ user: user._id }).save();
+        await new Security({ user: user._id }).save();
 
         const otp = Date.now().toString().slice(9, 13);
         console.log("NUM OTP: ", otp);
-
-        await new OTP({
-            otp: otp,
-        }).save();
-    
+        const sent = await EmailVerificationOTP(email, otp);
+        if (sent){
+            await new OTP({
+                otp: otp,
+            }).save();
+        }
         user.passwordText = undefined;
         return successResponse(res, 200, user, 'Verification code sent to your mail');
 
@@ -85,6 +97,7 @@ router.post("/signup", async(req, res, next) => {
     }
 })
 
+// OTP Router
 router.post("/otp", async(req, res, next) => {
     try{
         const { email, otp } = req.body;

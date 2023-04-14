@@ -6,10 +6,18 @@ const userSessionSchema = new mongoose.Schema({
         ref: "User",
         required: true,
     },
+    deviceInfo: {
+        type: Object,
+    },
+    deviceType: {
+        type: String
+    },
+    deviceID: {
+        type: String,
+    },
     createdAt: {
         type: Date,
-        default: Date.now,
-        expires: "30m",
+        default: new Date().toISOString(),
     },
 });
 

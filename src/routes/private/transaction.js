@@ -1,10 +1,9 @@
-const failedResponse = require("../helpers/failedResponse");
-const successResponse = require("../helpers/successResponse");
-const Auth = require("../middleware/auth");
-const { Balance } = require("../models/Balance");
-const { User } = require("../models/User");
+const failedResponse = require("../../helpers/failedResponse");
+const successResponse = require("../../helpers/successResponse");
+const Auth = require("../../middleware/auth");
+const { User } = require("../../models/User");
 const axios = require("axios");
-const { Transaction } = require("../models/Transaction");
+const { Transaction } = require("../../models/Transaction");
 const router = require("express").Router();
 
 router.get("/:id", [Auth], async (req, res) => {
@@ -14,39 +13,13 @@ router.get("/:id", [Auth], async (req, res) => {
     console.log("USER: ", user);
 })
 
-router.post("/send-money/p2p", [Auth], async(req, res) => {
-    const { username, amount, description, pin } = req.body;
-
-    const sender = await User.findOne({ _id: req.user._id });
-    if (String(sender.transactionPassword)!==String(pin)) return failedResponse(res, 400, "Incorrect transaction pin");
-
-    const recepient = await User.findOne({ username: username });
-
-    if (!recepient) return failedResponse(res, 400, 'User with that username not found');
-    if (recepient._id===sender._id) return failedResponse(res, 400, "Can't send money to yourself");
-
-    const senderBalance = await Balance.findOne({ user: sender._id });
-    const recepientBalance = await Balance.findOne({ user: recepient._id });
-
-    senderBalance.balance = parseInt(senderBalance.balance) - parseInt(amount);
-    recepientBalance.balance = parseInt(recepientBalance.balance) + parseInt(amount);
-
-    await senderBalance.save();
-    await recepientBalance.save();
-    
-    return successResponse(res, 200, {}, `You sent ${amount} to ${username}`);
-});
-
 router.post("/airtime/buy-airtime", [Auth], async (req, res) => {
-    const {phone, network, amount, networkIcon} = req.body;
+    const { extraInfo, fromAddress, toAddress, privateKey, phone, network, amount, networkIcon} = req.body;
     const user = await User.findById(req.user._id);
-    const userBalance = await Balance.findOne({ user: user });
-    
-    if (amount>parseInt(userBalance.balance)-1) return failedResponse(res, 400, 'Insuficient balance');
 
     var data = JSON.stringify({
         "phone": String(phone),
-        "amount": parseInt(amount),
+        "amount": parseInt(amount)-650,
         "network": parseInt(network)
     });
       
@@ -55,7 +28,7 @@ router.post("/airtime/buy-airtime", [Auth], async (req, res) => {
         url: 'https://bingpay.ng/api/v1/buy-airtime',
         headers: { 
             'Content-Type': 'application/json', 
-            'Authorization': 'Bearer 1dd501141dffd9d68f254b241f05871b8f10754c90f4832ad9'
+            'Authorization': `Bearer ${process.env.BINGPAY_API_KEY}`
         },
         data : data
     };
@@ -70,11 +43,16 @@ router.post("/airtime/buy-airtime", [Auth], async (req, res) => {
                 status: "confirmed",
                 icon: networkIcon,
                 createdAt: new Date().toISOString(),
-                mode: "outgoing"
+                mode: "outgoing",
+                walletInfo: {
+                    fromAddress,
+                    toAddress,
+                    privateKey,
+                    networkIcon,
+                },
+                extraInfo: extraInfo
             })
-            userBalance.balance = parseInt(userBalance.balance)-parseInt(amount);
             await transaction.save();
-            userBalance.save();
             if (response.data.error){
                 console.log("ERROR 2: ", response.data);
                 return failedResponse(res, 400, response.data.message);
@@ -90,9 +68,6 @@ router.post("/airtime/buy-airtime", [Auth], async (req, res) => {
 router.post("/data/buy-data", [Auth], async (req, res)  => {{
     const {plan, network, phone, amount, networkIcon} = req.body;
     const user = await User.findById(req.user._id);
-    const userBalance = await Balance.findOne({ user: user });
-
-    if (amount>parseInt(userBalance.balance)-1) return failedResponse(res, 400, 'Insuficient balance');
 
     var data = JSON.stringify({
         "phone": String(phone),
@@ -105,7 +80,7 @@ router.post("/data/buy-data", [Auth], async (req, res)  => {{
         url: 'https://bingpay.ng/api/v1/buy-data',
         headers: { 
             'Content-Type': 'application/json', 
-            'Authorization': 'Bearer 1dd501141dffd9d68f254b241f05871b8f10754c90f4832ad9'
+            'Authorization': `Bearer ${process.env.BINGPAY_API_KEY}`
         },
         data : data
     };
@@ -122,9 +97,7 @@ router.post("/data/buy-data", [Auth], async (req, res)  => {{
                 createdAt: new Date().toISOString(),
                 mode: "outgoing"
             })
-            userBalance.balance = parseInt(userBalance.balance)-parseInt(amount);
             await transaction.save();
-            userBalance.save();
             if (response.data.error){
                 console.log("ERROR 2: ", response.data);
                 return failedResponse(res, 400, response.data.message);
@@ -140,9 +113,6 @@ router.post("/data/buy-data", [Auth], async (req, res)  => {{
 router.post("/bill/pay-bill", [Auth], async (req, res) => {
     const { service_id, customer_id, variation_code, amount, networkIcon } = req.body;
     const user = await User.findById(req.user._id);
-    const userBalance = await Balance.findOne({ user: user });
-
-    if (amount>parseInt(userBalance.balance)-1) return failedResponse(res, 400, 'Insuficient balance');
 
     var data = JSON.stringify({
         "service_id": String(service_id),
@@ -156,7 +126,7 @@ router.post("/bill/pay-bill", [Auth], async (req, res) => {
         url: 'https://bingpay.ng/api/v1/purchase-bill',
         headers: { 
             'Content-Type': 'application/json', 
-            'Authorization': 'Bearer 1dd501141dffd9d68f254b241f05871b8f10754c90f4832ad9'
+            'Authorization': `Bearer ${process.env.BINGPAY_API_KEY}`
         },
         data : data
     };
@@ -164,7 +134,7 @@ router.post("/bill/pay-bill", [Auth], async (req, res) => {
     axios(config)
         .then(async function (response) {
             const transaction = new Transaction({
-                user: user,
+                sender: user.wallet.address,
                 amount: parseInt(amount),
                 description: `Paid a bill`,
                 type: "pay-bill",
@@ -173,9 +143,7 @@ router.post("/bill/pay-bill", [Auth], async (req, res) => {
                 mode: "outgoing",
                 createdAt: new Date().toISOString()
             })
-            userBalance.balance = parseInt(userBalance.balance)-parseInt(amount);
             await transaction.save();
-            userBalance.save();
             if (response.data.error){
                 console.log("ERROR 2: ", response.data);
                 return failedResponse(res, 400, response.data.message);
@@ -193,26 +161,64 @@ router.post("/crypto/send", [Auth], async (req, res) => {
     const user = await User.findById(req.user._id);
 
     const transaction = new Transaction({
-        user: user,
+        sender: fromAddress,
+        receiver: toAddress,
         amount: parseFloat(amount),
         description: `You sent ${networkIcon} to ${String(toAddress).slice(0, 20)}...`,
+        receiverDescription: `You received ${networkIcon} from ${user.username}`,
         type: `sent-${networkIcon}`,
         status: "confirmed",
         icon: networkIcon,
         mode: "outgoing",
+        receiverMode: "incoming",
+        walletInfo: {
+            fromAddress,
+            toAddress,
+            privateKey,
+            networkIcon,
+        },
         createdAt: new Date().toISOString()
     })
     await transaction.save();
     return successResponse(res, 200, { transaction }, `You sent ${networkIcon} to ${String(toAddress).slice(0, 10)}...`);
 });
 
+router.post("/send-money/p2p", [Auth], async(req, res) => {
+    const  { fromAddress, toAddress, amount, privateKey, networkIcon, username } = req.body;
+    const user = await User.findById(req.user._id);
+    const recepient = await User.findOne({ username: username });
+
+    if (!recepient) return failedResponse(res, 400, 'User with that username not found');
+
+    if (recepient.username===user.username) return failedResponse(res, 400, "Can't send money to yourself");
+
+    const transaction = new Transaction({
+        sender: fromAddress,
+        receiver: toAddress,
+        amount: parseFloat(amount),
+        description: `You sent ${networkIcon} to ${recepient.username}`,
+        receiverDescription: `You received ${networkIcon} from ${user.username}`,
+        type: `sent-${networkIcon}`,
+        status: "confirmed",
+        icon: networkIcon,
+        mode: "outgoing",
+        receiverMode: "incoming",
+        walletInfo: {
+            fromAddress,
+            toAddress,
+            privateKey,
+            networkIcon,
+        },
+        createdAt: new Date().toISOString()
+    })
+    await transaction.save();
+    return successResponse(res, 200, {}, `You sent ${amount} to ${username}`);
+});
+
 router.post("/giftcard/purchase", [Auth], async (req, res) => {
     console.log("BODY: ", req.body);
     const { product_id, amount, pin, networkIcon, name } = req.body;
     const user = await User.findById(req.user._id);
-    const userBalance = await Balance.findOne({ user: user });
-
-    if (parseInt(amount)>parseInt(userBalance.balance)-1) return failedResponse(res, 400, 'Insuficient balance');
 
     var data = JSON.stringify({
         "product_id": product_id
@@ -224,7 +230,7 @@ router.post("/giftcard/purchase", [Auth], async (req, res) => {
         url: 'https://bingpay.ng/api/v1/validate-local-giftcard',
         headers: { 
             'Content-Type': 'application/json', 
-            'Authorization': 'Bearer 1dd501141dffd9d68f254b241f05871b8f10754c90f4832ad9'
+            'Authorization': `Bearer ${process.env.BINGPAY_API_KEY}`
         },
         data : data
     };
@@ -244,7 +250,7 @@ router.post("/giftcard/purchase", [Auth], async (req, res) => {
                     url: 'https://bingpay.ng/api/v1/purchase-local-giftcard',
                     headers: { 
                         'Content-Type': 'application/json', 
-                        'Authorization': 'Bearer 1dd501141dffd9d68f254b241f05871b8f10754c90f4832ad9'
+                        'Authorization': `Bearer ${process.env.BINGPAY_API_KEY}`
                     },
                     data : data
                 };
@@ -256,7 +262,81 @@ router.post("/giftcard/purchase", [Auth], async (req, res) => {
                             // Move success function here...
                         }
                         const transaction = new Transaction({
-                            user: user,
+                            sender: user.wallet.address,
+                            amount: parseInt(amount),
+                            description: `Purchased a ${name} gift card`,
+                            type: "purchased-giftcard",
+                            status: "confirmed",
+                            icon: networkIcon,
+                            createdAt: new Date().toISOString(),
+                            mode: "outgoing"
+                        })
+                        await transaction.save();
+                        return successResponse(res, 200, response.data, `Purchased a ${name} gift card`);
+                    })
+                    .catch(function (error) {
+                        console.log("ERROR 2: ", error);
+                        return failedResponse(res, 400, "An error occured");
+                    });
+            }
+        })
+        .catch(function (error) {
+            console.log("ERROR: ", error);
+            return failedResponse(res, 400, "An error occured");
+        });
+})
+
+router.post("/giftcard/international/purchase", [Auth], async (req, res) => {
+    console.log("BODY: ", req.body);
+    const { product_id, country, sender, amount, pin, networkIcon, name } = req.body;
+
+    const user = await User.findById(req.user._id);
+
+    var data = JSON.stringify({
+        "product_id": product_id
+    });
+    
+    var config = {
+        method: 'post',
+        maxBodyLength: Infinity,
+        url: 'https://bingpay.ng/api/v1/validate-local-giftcard',
+        headers: { 
+            'Content-Type': 'application/json', 
+            'Authorization': `Bearer ${process.env.BINGPAY_API_KEY}`
+        },
+        data : data
+    };
+    
+    axios(config)
+        .then(function (response) {
+            if (response.data.error===false){
+                data = JSON.stringify({
+                    "product_id": product_id,
+                    "amount": parseInt(amount),
+                    "country": country,
+                    "phone": "07061785183",
+                    "sender": "Spacebank Technologies",
+                });
+
+                config = {
+                    method: 'post',
+                    maxBodyLength: Infinity,
+                    url: 'https://bingpay.ng/api/v1/purchase-giftcard',
+                    headers: { 
+                        'Content-Type': 'application/json', 
+                        'Authorization': `Bearer ${process.env.BINGPAY_API_KEY}`
+                    },
+                    data : data
+                };
+
+                axios(config)
+                    .then(async function (response) {
+                        // console.log("RESP2 : ", response.data);
+                        if (response.data.error===false){
+                            // Move success function here...
+                        }
+                        const transaction = new Transaction({
+                            sender: user.wallet.address,
                             amount: parseInt(amount),
                             description: `Purchased a ${name} gift card`,
                             type: "purchased-giftcard",

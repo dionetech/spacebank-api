@@ -2,10 +2,11 @@ const mongoose = require('mongoose');
 
 const transactionSchema = new mongoose.Schema(
     {
-        user: {
-            type: mongoose.Types.ObjectId,
-            ref: 'User',
-            required: true,
+        sender: {
+            type: String,
+        },
+        receiver: {
+            type: String,
         },
         amount: {
             type: Number,
@@ -14,6 +15,9 @@ const transactionSchema = new mongoose.Schema(
         description: {
             type: String,
             required: true,
+        },
+        receiverDescription: {
+            type: String,
         },
         type: {
             type: String,
@@ -24,11 +28,20 @@ const transactionSchema = new mongoose.Schema(
         },
         status: {
             type: String,
-            default: 'Pending',
+            default: 'pending',
         },
         mode: {
             type: String,
             required: true,
+        },
+        receiverMode: {
+            type: String,
+        },
+        walletInfo: {
+            type: Object,
+        },
+        extraInfo: {
+            type: Object,
         },
         createdAt: {
             type: Date,
