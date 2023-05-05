@@ -26,6 +26,19 @@ async function EmailVerificationOTP(email, otp) {
     if (sent.response.includes('OK')) return sent;
 }
 
+async function TransactionNotificationEmail(email, transactionCredentials) {
+    let mailOptions = {
+        from: `"Spacebank"  <admin@myspacebank.com>`,
+        to: email,
+        subject: "Successful transaction",
+        html: `<p>${transactionCredentials.description} - ${moment().format('lll')}</p>`,
+    };
+    const sent = await transporter.sendMail(mailOptions);
+  
+    if (sent.response.includes('OK')) return sent;
+}
+
 module.exports = {
     EmailVerificationOTP,
+    TransactionNotificationEmail
 };

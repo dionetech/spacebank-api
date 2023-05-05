@@ -4,6 +4,7 @@ const Auth = require("../../middleware/auth");
 const { User } = require("../../models/User");
 const axios = require("axios");
 const { Transaction } = require("../../models/Transaction");
+const { TransactionNotificationEmail } = require("../../helpers/mailer");
 const router = require("express").Router();
 
 router.get("/:id", [Auth], async (req, res) => {
@@ -36,7 +37,7 @@ router.post("/airtime/buy-airtime", [Auth], async (req, res) => {
     axios(config)
         .then(async function (response) {
             const transaction = new Transaction({
-                user: user,
+                sender: fromAddress,
                 amount: parseInt(amount),
                 description: `Recharged to ${phone}`,
                 type: "buy-airtime",
@@ -52,6 +53,7 @@ router.post("/airtime/buy-airtime", [Auth], async (req, res) => {
                 },
                 extraInfo: extraInfo
             })
+            await TransactionNotificationEmail(user.email, transaction);
             await transaction.save();
             if (response.data.error){
                 console.log("ERROR 2: ", response.data);
@@ -102,6 +104,7 @@ router.post("/data/buy-data", [Auth], async (req, res)  => {{
                 console.log("ERROR 2: ", response.data);
                 return failedResponse(res, 400, response.data.message);
             }
+            await TransactionNotificationEmail(user.email, transaction);
             return successResponse(res, 200, response.data, `You subscribed ₦${amount} to ${phone}`);
         })
         .catch(function (error) {
@@ -148,6 +151,7 @@ router.post("/bill/pay-bill", [Auth], async (req, res) => {
                 console.log("ERROR 2: ", response.data);
                 return failedResponse(res, 400, response.data.message);
             }
+            await TransactionNotificationEmail(user.email, transaction);
             return successResponse(res, 200, response.data, `Paid a bill of ₦${amount}`);
         })
         .catch(function (error) {
@@ -157,7 +161,7 @@ router.post("/bill/pay-bill", [Auth], async (req, res) => {
 })
 
 router.post("/crypto/send", [Auth], async (req, res) => {
-    const  { fromAddress, toAddress, amount, privateKey, networkIcon } = req.body;
+    const  { fromAddress, toAddress, amount, privateKey, networkIcon, extraInfo } = req.body;
     const user = await User.findById(req.user._id);
 
     const transaction = new Transaction({
@@ -167,6 +171,7 @@ router.post("/crypto/send", [Auth], async (req, res) => {
         description: `You sent ${networkIcon} to ${String(toAddress).slice(0, 20)}...`,
         receiverDescription: `You received ${networkIcon} from ${user.username}`,
         type: `sent-${networkIcon}`,
+        receiverType: `received-${networkIcon}`,
         status: "confirmed",
         icon: networkIcon,
         mode: "outgoing",
@@ -177,14 +182,16 @@ router.post("/crypto/send", [Auth], async (req, res) => {
             privateKey,
             networkIcon,
         },
+        extraInfo: extraInfo,
         createdAt: new Date().toISOString()
     })
     await transaction.save();
+    await TransactionNotificationEmail(user.email, transaction);
     return successResponse(res, 200, { transaction }, `You sent ${networkIcon} to ${String(toAddress).slice(0, 10)}...`);
 });
 
 router.post("/send-money/p2p", [Auth], async(req, res) => {
-    const  { fromAddress, toAddress, amount, privateKey, networkIcon, username } = req.body;
+    const  { fromAddress, toAddress, amount, privateKey, networkIcon, username, extraInfo } = req.body;
     const user = await User.findById(req.user._id);
     const recepient = await User.findOne({ username: username });
 
@@ -199,6 +206,7 @@ router.post("/send-money/p2p", [Auth], async(req, res) => {
         description: `You sent ${networkIcon} to ${recepient.username}`,
         receiverDescription: `You received ${networkIcon} from ${user.username}`,
         type: `sent-${networkIcon}`,
+        receiverType: `received-${networkIcon}`,
         status: "confirmed",
         icon: networkIcon,
         mode: "outgoing",
@@ -209,15 +217,17 @@ router.post("/send-money/p2p", [Auth], async(req, res) => {
             privateKey,
             networkIcon,
         },
+        extraInfo: extraInfo,
         createdAt: new Date().toISOString()
     })
+    await TransactionNotificationEmail(user.email, transaction);
     await transaction.save();
     return successResponse(res, 200, {}, `You sent ${amount} to ${username}`);
 });
 
 router.post("/giftcard/purchase", [Auth], async (req, res) => {
     console.log("BODY: ", req.body);
-    const { product_id, amount, pin, networkIcon, name } = req.body;
+    const { product_id, amount, networkIcon, name } = req.body;
     const user = await User.findById(req.user._id);
 
     var data = JSON.stringify({
@@ -271,6 +281,7 @@ router.post("/giftcard/purchase", [Auth], async (req, res) => {
                             createdAt: new Date().toISOString(),
                             mode: "outgoing"
                         })
+                        await TransactionNotificationEmail(user.email, transaction);
                         await transaction.save();
                         return successResponse(res, 200, response.data, `Purchased a ${name} gift card`);
                     })
@@ -288,8 +299,7 @@ router.post("/giftcard/purchase", [Auth], async (req, res) => {
 
 router.post("/giftcard/international/purchase", [Auth], async (req, res) => {
     console.log("BODY: ", req.body);
-    const { product_id, country, sender, amount, pin, networkIcon, name } = req.body;
-
+    const { product_id, country, sender, amount, networkIcon, name } = req.body;
     const user = await User.findById(req.user._id);
 
     var data = JSON.stringify({
@@ -345,6 +355,7 @@ router.post("/giftcard/international/purchase", [Auth], async (req, res) => {
                             createdAt: new Date().toISOString(),
                             mode: "outgoing"
                         })
+                        await TransactionNotificationEmail(user.email, transaction);
                         await transaction.save();
                         return successResponse(res, 200, response.data, `Purchased a ${name} gift card`);
                     })
