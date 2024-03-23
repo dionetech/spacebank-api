@@ -9,6 +9,10 @@ const userSchema = new mongoose.Schema({
         unique: true,
         lowercase: true,
     },
+    balance: [{
+        currency: String,
+        value: Number,
+    }],
     firstName: {
         type: String,
     },
@@ -52,6 +56,9 @@ const userSchema = new mongoose.Schema({
     address: {
         type: String,
     },
+    country: {
+        type: String,
+    },
     wallet: {
         type: Object,
     },
@@ -69,6 +76,10 @@ const userSchema = new mongoose.Schema({
     transactionPassword: {
         type: String,
         default: "1234"
+    },
+    created: { 
+        type: Date,
+        default: Date.now 
     },
 });
 

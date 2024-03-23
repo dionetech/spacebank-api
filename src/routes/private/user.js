@@ -5,7 +5,7 @@ const failedResponse = require("../../helpers/failedResponse");
 const successResponse = require('../../helpers/successResponse');
 const Auth = require("../../middleware/auth");
 const Security = require('../../models/Security');
-const { Transaction } = require('../../models/Transaction');
+const Transaction = require('../../models/Transaction');
 const { User } = require("../../models/User");
 const UserSession = require('../../models/UserSession');
 const NodeCache = require("node-cache");
@@ -59,7 +59,7 @@ router.get('/:id', [Auth], async (req, res) => {
     const sessions = await UserSession.find({ user: user._id });
 
     transactions.map((tr) => {
-        if (tr.sender===user.wallet.address || tr.receiver===user.wallet.address){
+        if (String(tr.sender).toLowerCase()===String(user.wallet.address).toLowerCase() || String(tr.receiver).toLowerCase()===String(user.wallet.address).toLowerCase()){
             userTransactions.push(tr);
         }
     })
