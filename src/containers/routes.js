@@ -36,11 +36,11 @@ module.exports = function (app){
     app.use(compression())
 
     // User Routes
+    // PUBLIC
     app.use('/api/v1/users', UserRoutes);
+
     // Transaction Routes
     app.use('/api/v1/transactions', TransactionRoutes);
-
-    // PUBLIC
 
     //Auth
     app.use('/api/v1/auth', AuthRoutes);

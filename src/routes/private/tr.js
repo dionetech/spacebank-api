@@ -56,7 +56,7 @@ router.post("/airtime/buy-airtime", [Auth], async (req, res) => {
             mode: "outgoing"
         }
         await addNewTransaction(transactionData);
-        return successResponse(res, 200, response.data, `You recharged ₦${amount} to ${phone}`);
+        return successResponse(res, 200, response.data, `You recharged â¦${amount} to ${phone}`);
     })
     .catch(function (error) {
         console.log("AIRTIME ERROR: ", error.response);

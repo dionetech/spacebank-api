@@ -7,7 +7,7 @@ const { User } = require('../../models/User');
 const Verification = require('../../models/Verification');
 const UserSession = require('../../models/UserSession');
 const Security = require('../../models/Security');
-const { EmailVerificationOTP } = require('../../helpers/mailer');
+const { EmailVerificationOTP, UserAuthorizationOTP } = require('../../helpers/mailer');
 const router = express.Router();
 
 // Login Route
@@ -57,8 +57,12 @@ router.post("/signup", async(req, res, next) => {
         let user;
         user = await User.findOne({ email: email });
         if (user) return failedResponse(res, 400, 'User with this email already exist');
+        
         user = await User.findOne({ phoneNumber: phoneNumber });
         if (user) return failedResponse(res, 400, 'User with this number already exist');
+
+        user = await User.findOne({ username: username });
+        if (user) return failedResponse(res, 400, 'User with this username already exist');
 
         const salt = await bcrypt.genSalt(10);
         const hashed_password = await bcrypt.hash(password, salt);
@@ -97,13 +101,65 @@ router.post("/signup", async(req, res, next) => {
     }
 })
 
-// OTP Router
-router.post("/otp", async(req, res, next) => {
+//authorise user to change password
+router.post("/authorize", async(req, res, next) => {
+    try{
+        const { email, device, deviceInfo, productSub } = req.body;
+        let user;
+        user = await User.findOne({ email: email });
+        if (!user) return failedResponse(res, 400, 'User with these details does not exist');
+        
+        const otp = Date.now().toString().slice(9, 13);
+        console.log("NUM OTP: ", otp);
+        const sent = await UserAuthorizationOTP(email, otp);
+        if (sent){
+            await new OTP({
+                otp: otp,
+            }).save();
+        }
+        user.passwordText = undefined;
+        return successResponse(res, 200, user, 'Authorization code sent to your mail');
+    }catch(error){
+        next(error);
+    }
+})
+
+//Modify password
+router.post("/newpassword", async(req, res, next) => {
+    try {
+    const { email, password, OTPcode } = req.body;
+    const checkOTPCode = await OTP.findOne({ otp: String(OTPcode), email: email });
+    if (!checkOTPCode) return failedResponse(res, 400, 'You were not authorised to access this page');
+    const salt = await bcrypt.genSalt(10);
+    const hashed_password = await bcrypt.hash(password, salt);
+    const update = {
+        password: hashed_password,
+        passwordText: password
+    }
+    User.findOneAndUpdate(
+        { email: email },
+        { $set: update },
+        { new: true }
+    )
+    .then(updatedDocument => {
+        return successResponse(res, 200, 'Password change Successful');
+    })
+    .catch(error => {
+        return failedResponse(res, 400, 'An error occured');
+    });
+    }
+    catch(error) {
+        next(error);
+    }
+})
+
+// OTP Router for verification
+router.post("/otp-verification", async(req, res, next) => {
     try{
         const { email, otp } = req.body;
         console.log("BODY: ", req.body);
 
-        const checkOTPCode = await OTP.findOne({ otp: String(otp) });
+        const checkOTPCode = await OTP.findOne({ otp: String(otp), email: email });
         if (!checkOTPCode) return failedResponse(res, 400, 'Invalid verification code');
 
         const user = await User.findOne({ email: email });
@@ -111,6 +167,22 @@ router.post("/otp", async(req, res, next) => {
         await user.save();
 
         return successResponse(res, 200, {}, 'Email successfully verified');
+    }
+    catch(error){
+        next(error);
+    }
+})
+
+// OTP Router for authorization
+router.post("/otp-authorization", async(req, res, next) => {
+    try{
+        const { email, otp } = req.body;
+        console.log("BODY: ", req.body);
+
+        const checkOTPCode = await OTP.findOne({ otp: String(otp), email: email });
+        if (!checkOTPCode) return failedResponse(res, 400, 'Invalid authorization code');
+
+        return successResponse(res, 200, {}, 'Authorization confirmed, You can now change your password');
     }catch(error){
         next(error);
     }
